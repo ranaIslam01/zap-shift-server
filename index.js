@@ -1,12 +1,23 @@
 const express = require("express");
+const cors = require("cors");
+const admin = require("firebase-admin");
 const app = express();
 const port = 3000;
-const cors = require("cors");
 require("dotenv").config();
 
 // --- Middleware ---
 app.use(cors());
 app.use(express.json());
+
+
+// services account 
+const serviceAccount = require("./firebase admin-key.json");
+
+admin.initializeApp({
+  credential: admin.credential.cert(serviceAccount)
+});
+
+
 
 const { MongoClient, ServerApiVersion, ObjectId } = require("mongodb");
 const uri = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASS}@mordancluster.s5spyh0.mongodb.net/?appName=MordanCluster`;
@@ -33,7 +44,15 @@ async function run() {
 
     /////custiom middleware
     const verifyFBToken = async (req, res, next) => {
+      const authHeader = req.headers.authorization;
+      if (!authHeader) {
+        return res.status(401).send({ message: "unauthorized access" });
+      }
       console.log("headers in middleware", req.headers);
+      const token = authHeader.split(" ")[1];
+      if (!token) {
+        return res.status(401).send({ message: "unauthorized access" });
+      }
 
       next();
     };
