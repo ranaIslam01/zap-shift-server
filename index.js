@@ -9,15 +9,12 @@ require("dotenv").config();
 app.use(cors());
 app.use(express.json());
 
-
-// services account 
+// services account
 const serviceAccount = require("./firebase admin-key.json");
 
 admin.initializeApp({
-  credential: admin.credential.cert(serviceAccount)
+  credential: admin.credential.cert(serviceAccount),
 });
-
-
 
 const { MongoClient, ServerApiVersion, ObjectId } = require("mongodb");
 const uri = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASS}@mordancluster.s5spyh0.mongodb.net/?appName=MordanCluster`;
@@ -54,7 +51,15 @@ async function run() {
         return res.status(401).send({ message: "unauthorized access" });
       }
 
-      next();
+      // verify the token
+      try {
+        const decoded = await admin.auth().verifyIdToken(token);
+        req.decoded = decoded;
+        next();
+      } catch (error) {
+        console.error(error);
+        return res.status(403).send({ message: "forbiden access" });
+      }
     };
 
     // create parcels
@@ -84,7 +89,10 @@ async function run() {
     app.get("/parcels", verifyFBToken, async (req, res) => {
       try {
         const email = req.query.email;
-        console.log(req.headers);
+        console.log(req.decoded);
+        if(req.decoded.email !== email){
+          return res.status(403).send({message: 'forbiden access'})
+        }
         let query = {};
         if (email) {
           query = { created_By: email };
